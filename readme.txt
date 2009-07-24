@@ -25,16 +25,17 @@ Changelog:
           o Busca por tags <item> e </item> selecionando o que há entre elas quando uma word da wordlist é encontrada entre elas 
           o Retorna um txt contendo o conteudo selecionado
 
-    * v 0.2 (implementar):
+    * v 0.2:
           o Verificar versão do RSS Feed que está sendo checado
-                + verify if links are valid XML resources before performing any actions 
-          o use tag # for comments in input files and ignore blank lines
-          o Testar se no feed existe alguma pattern da wordlist mas não existe as tags <item> e </item>
-          o Gerar saída em HTML/XML
-          o Para cada pattern da wordlist, fazer uma combinação de possíveis variações e usá-las para identificar aquela pattern dentro do feed 
+          o use tag # for comments in input files and ignore blank lines 
+          o Testar se no feed existe alguma pattern da wordlist mas não existe as tags <item> e </item> (implementar)
+          o Gerar saída em HTML/XML (implementar)
+          o Para cada pattern da wordlist, fazer uma combinação de possíveis variações e usá-las para identificar aquela pattern dentro do feed (implementar)
+          o Verificar e testar o trecho do código que remove os itens já verificados
 
     * v 0.3 (implementar):
           o Aprovar ou negar as entradas do linklist e da wordlist (proteção) 
+                + verify if links are valid XML resources before performing any actions (implementar)
 
     * v 0.4 (implementar):
           o Incluir leitura de feeds no formato ATOM (http://tools.ietf.org/html/rfc4287) 
