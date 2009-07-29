@@ -28,10 +28,10 @@ Changelog:
     * v 0.2:
           o Verificar versão do RSS Feed que está sendo checado
           o use tag # for comments in input files and ignore blank lines 
+          o Verificar e testar o trecho do código que remove os itens já verificados
           o Testar se no feed existe alguma pattern da wordlist mas não existe as tags <item> e </item> (implementar)
           o Gerar saída em HTML/XML (implementar)
           o Para cada pattern da wordlist, fazer uma combinação de possíveis variações e usá-las para identificar aquela pattern dentro do feed (implementar)
-          o Verificar e testar o trecho do código que remove os itens já verificados
 
     * v 0.3 (implementar):
           o Aprovar ou negar as entradas do linklist e da wordlist (proteção) 
