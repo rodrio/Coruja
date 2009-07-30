@@ -33,7 +33,7 @@ sub charCount{
 }
 
 # Function that writes the output into a file
-# call writeLog("logfile", "string");
+# call writeLog("logfile", "String to write");
 sub writeLog{
   my $logfile = $_[0];
   my $str = $_[1];
@@ -45,6 +45,7 @@ sub writeLog{
 }
 
 # Function that uses the resources prepared in rssVerify() to parse $site, searching for $word
+# Call feedParse("url","pattern",$resource)
 sub feedParse{
   # Receiving resources
   $site = $_[0];
@@ -61,7 +62,7 @@ sub feedParse{
   
   # Variables to handle XML tags
   my $itemtag = "<item";
-  my $enditemtag = "</item>";
+  my $itemtagend = "</item>";
   
   # Other variables
   my $interesting;
@@ -75,7 +76,7 @@ sub feedParse{
   # Extracting items from $data
   if(index($data, $word)>0){
 #    print "Pattern '$word' found on feed '$site'!\n"; #DEBUG
-    writeLog("log.txt","--->Pattern Found: $word<---\n");
+    #writeLog("log.xml","--->Pattern $word found!!!");
     
     # Will write $interesting on LOG if it is on the correct item
     # Then removes from $data what has already been verified
@@ -83,17 +84,18 @@ sub feedParse{
 #      print "Item parsing loop reached...\n"; #DEBUG
       $pos1 = index($data, $itemtag);
       $pos2 = index($data, $word);
-      $pos3 = index($data, $enditemtag);
+      $pos3 = index($data, $itemtagend);
       if($pos3>$pos2 and $pos2>$pos1){
 #        print "Item delimiters found. Extracting interesting content...\n"; #DEBUG
-        $interesting = substr($data, $pos1, $pos3-$pos1+charCount($enditemtag));
-        writeLog("log.txt","$interesting\n");
-        writeLog("log.txt","\n");
+        $interesting = substr($data, $pos1, $pos3-$pos1+charCount($itemtagend));
+        writeLog("log.xml","$interesting\n");
+        writeLog("log.html","$interesting\n");
+        #writeLog("log.xml","\n");
 #        print "Interesting content written into log...\n"; #DEBUG
       }
       
 #      print "Removing already verified content\n"; #DEBUG
-      $data = substr($data, $pos3+charCount($enditemtag));
+      $data = substr($data, $pos3+charCount($itemtagend));
     }
   }
 }
@@ -101,6 +103,7 @@ sub feedParse{
 
 # Function that performs the HTTP Request to check each link on feedlist
 # and combines them with each word on wordlist
+# Call rssVerify("feedlist","wordlist")
 sub rssVerify{
   # Indexing the RSS sites
   my $sitelist = $_[0];
@@ -115,13 +118,25 @@ sub rssVerify{
   close(DATA);
   
   # Variables to handle XML tags
-  my $versiontag = "<rss version";
-  my $titletag = "<title";
+  my $versiontag = "<rss version=\"";
+  my $titletag = "<title>";
+  my $titletagend = "</title>";
   
   # Other variables
   my $version;
   my $title;
+  my $datetime = localtime();
   
+  # Header of XML logfile
+  writeLog("log.xml","<?xml version=\"1.0\"?>\n");
+  writeLog("log.xml","<rss version=\"2.0\">\n");
+  writeLog("log.xml","\n");
+  # Header of HTML logfile
+  writeLog("log.html","<HTML><HEAD>\n");
+  writeLog("log.html","<title>Coruja Feed Parser Results</title>\n");
+  writeLog("log.html","<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n");
+  writeLog("log.html","</HEAD>\n");
+  writeLog("log.html","\n<body>\n");
   
   # Foreach $site, foreach $word...
   foreach $site (@links){
@@ -140,27 +155,36 @@ sub rssVerify{
     # Extracting feed title
     $title = $resource->content;
     if (index($title, $titletag)>0){
-      $title = substr($title, index($title, $titletag));
-      $title = substr($title, index($title, $titletag), index($title, ">")-index($title, $titletag)+1);
+      $title = substr($title, index($title, $titletag)+charCount($titletag), index($title, $titletagend)-index($title, $titletag)-charCount($titletag));
     }else{
       $title = "No title tag ($titletag>) found.";
     }
     # Extracting feed version
     $version = $resource->content;
     if (index($version, $versiontag)>0){
-      $version = substr($version, index($version, $versiontag));
-      $version = substr($version, index($version, $versiontag), index($version, ">")-index($version, $versiontag)+1);
+      $version = substr($version, index($version, "version=\"")+charCount("version=\""));
+      $version = substr($version, 0, index($version, "\""));
     }else{
-      $version = "No version tag ($versiontag>) found.";
+      $version = "No version tag ($versiontag\">) found.";
     }
     
-    # Header of logfile, foreach feed
-    writeLog("log.txt","==============================");
-    writeLog("log.txt","\n");
-    writeLog("log.txt","RSS Feed: $site\n");
-    writeLog("log.txt","RSS Title: $title\n");
-    writeLog("log.txt","RSS Version: $version\n");
-    writeLog("log.txt","\n");
+    # Header on XML logfile of each feed
+	writeLog("log.xml","<channel>\n");
+    writeLog("log.xml","  <link>$site</link>\n");
+    writeLog("log.xml","  <title>$title</title>\n");
+	# A coleta da versao do RSS ta dando erro ainda. Precisa ser aprimorada.
+	#writeLog("log.xml","  <!--<description>RSS Version of this Feed: $version</description>-->\n");
+	writeLog("log.xml","  <description>by Coruja Feed Parser</description>\n");
+    writeLog("log.xml","  <pubDate>$datetime</pubDate>\n");
+
+    # Header on HTML logfile of each feed
+	writeLog("log.html","<table border=\"1\" width=\"600\"><tr><td>\n");
+    writeLog("log.html","  <h1>$title</h1>\n");
+	# A coleta da versao do RSS ta dando erro ainda. Precisa ser aprimorada.
+	writeLog("log.html","  <h2>RSS Version of this Feed: $version</h2>\n");
+    writeLog("log.html","  <h2>$datetime</h2>\n");
+	writeLog("log.html","  <h3>by Coruja Feed Parser</h3>\n");
+    writeLog("log.html","  <a href=\"$site\">ORIGINAL RSS FEED LINK</a>\n");
     
     foreach $word (@search){
 #      print "Parsing word list...\n"; #DEBUG
@@ -174,7 +198,20 @@ sub rssVerify{
       
       feedParse($site, $word, $resource);
     }
+
+	# Closing XML Logfile feed header
+    writeLog("log.xml","</channel>\n");
+    writeLog("log.xml","\n");
+	# Closing HTML Logfile feed header
+    writeLog("log.html","</td></tr></table>\n");
+    writeLog("log.html","\n");
   }
+  # Closing XML Logfile
+  writeLog("log.xml","</rss>\n");
+  writeLog("log.xml","\n");
+  # Closing HTML Logfile
+  writeLog("log.html","</body></html>\n");
+  writeLog("log.html","\n");
 }
 
 
@@ -182,8 +219,22 @@ sub rssVerify{
 print "Running... Please be sure you have internet connectivity!\n";
 rssVerify("links", "patterns");
 
-  # Verifying written log
-  open(DATA, "log.txt") || die("ERROR: No log.txt generated! Please run again...\n");
-  close(DATA);
+# Verifying written log
+open(DATA, "log.xml") || die("ERROR: No log.xml generated! Please run again...\n");
+my @log = <DATA>;
+close(DATA);
+my $line;
+
+# Converting log to HTML...
+#foreach $line (@log){
+#  $line =~ s/<\?xml version\=\"1\.0\"\?>/<html>/;
+#  $line =~ s/<rss version\=\"2\.0\">/<body>/;
+#  $line =~ s/<\/rss>/<\/body>/;
+#  $line =~ s/<channel>/<table><tr><td border=\"1\">/;
+#  $line =~ s/<\/channel>/<\/td><\/tr><\/table>/;
+#  $line =~ s/\<link\>/\<a\ href\=\"/;
+#  $line =~ s/\<\/link\>/\"\>LINK\<\/a\>/;
+#  writeLog("log.html",$line);
+#}
 
 print "Info succesfully attached to log!\n";
