@@ -1,0 +1,6 @@
+# Feeds de vulnerabilidades
+http://www.securityfocus.com/rss/vulnerabilities.xml
+http://www.milw0rm.com/rss.php
+http://packetstormsecurity.org/exploits.xml
+http://www.us-cert.gov/channels/bulletins.rdf
+
