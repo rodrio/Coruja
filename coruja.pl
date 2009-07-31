@@ -1,17 +1,36 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
+use warnings;
 use LWP::UserAgent;
+use HTTP::Request;
+use XML::RSS;
+use List::MoreUtils qw(uniq);
+
+# Global variables
+my $rss_source = new XML::RSS;
+my $DEBUG = 0;
+my $HTML = 1;
 
 # Create a global user agent object
 my $agent = LWP::UserAgent->new;
-$agent->agent("Dobermann v0.1");
+$agent->agent("Coruja v0.2");
 
-# Global variables, used in multiple functions
-my $site;
-my $word;
-my $request;
-my $resource;
+# Start XML Logfile
+my $coruja = new XML::RSS(version => '1.0');
+$coruja->channel(
+	title => "Coruja Feed Parser",
+	link => "http://www.gris.dcc.ufrj.br",
+	description => "We watch it for you! ;)"
+);
+
+# Start HTML Logfile
+writeLog("log.html","<html>\n") if $HTML==1;
+writeLog("log.html","<head>\n") if $HTML==1;
+writeLog("log.html","<title>Coruja Feed Parser Results - We watch it for you! ;)</title>\n") if $HTML==1;
+writeLog("log.html","<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n") if $HTML==1;
+writeLog("log.html","</HEAD>\n\n") if $HTML==1;
+writeLog("log.html","<body>\n") if $HTML==1;
 
 # Function that trims words
 # call trim("word");
@@ -22,82 +41,46 @@ sub trim{
 	return $string;
 }
 
-# Function that counts how many chars a word have
-# call charCount("word");
-sub charCount{
-  my $str = $_[0];
-  my $garbage = $_[1];
-  my $num;
-  $num++ while $str =~ s/.//;
-  return $num;
-}
-
 # Function that writes the output into a file
 # call writeLog("logfile", "String to write");
 sub writeLog{
-  my $logfile = $_[0];
-  my $str = $_[1];
-  my $garbage = $_[2];
+ 	my $logfile = shift;
+ 	my $str = shift;
   
-  open (LOG, ">>$logfile") or die "----> Could not open $logfile $!\n";
-  print LOG $str;
-  close LOG;
+	open (LOG, ">>$logfile") or die "----> Could not open $logfile $!\n";
+	print LOG $str;
+	close LOG;
 }
 
-# Function that uses the resources prepared in rssVerify() to parse $site, searching for $word
-# Call feedParse("url","pattern",$resource)
+# Function that uses searches $rss_source for a word/pattern
+# Call feedParse("pattern")
 sub feedParse{
-  # Receiving resources
-  $site = $_[0];
-  $word = $_[1];
-  $resource = $_[2];
-  my $garbage = $_[3];
-  
-  # Variables to handle text mining
-  my $pos1;
-  my $pos2;
-  my $pos3;
-  my $id;
-  my $posaux;
-  
-  # Variables to handle XML tags
-  my $itemtag = "<item";
-  my $itemtagend = "</item>";
-  
-  # Other variables
-  my $interesting;
-  my $data;
-  
-#  print "Starting parse on '$site' for the pattern '$word'...\n"; #DEBUG
-  
-  # $data receives the GET content to be parsed
-  $data = $resource->content;
-  
-  # Extracting items from $data
-  if(index($data, $word)>0){
-#    print "Pattern '$word' found on feed '$site'!\n"; #DEBUG
-    #writeLog("log.xml","--->Pattern $word found!!!");
-    
-    # Will write $interesting on LOG if it is on the correct item
-    # Then removes from $data what has already been verified
-    while(index($data, $word)>0){
-#      print "Item parsing loop reached...\n"; #DEBUG
-      $pos1 = index($data, $itemtag);
-      $pos2 = index($data, $word);
-      $pos3 = index($data, $itemtagend);
-      if($pos3>$pos2 and $pos2>$pos1){
-#        print "Item delimiters found. Extracting interesting content...\n"; #DEBUG
-        $interesting = substr($data, $pos1, $pos3-$pos1+charCount($itemtagend));
-        writeLog("log.xml","$interesting\n");
-        writeLog("log.html","$interesting\n");
-        #writeLog("log.xml","\n");
-#        print "Interesting content written into log...\n"; #DEBUG
-      }
-      
-#      print "Removing already verified content\n"; #DEBUG
-      $data = substr($data, $pos3+charCount($itemtagend));
-    }
-  }
+	# Receiving resources
+	my $word = shift;
+	my $title;
+	my $description;
+
+	$word = lc($word);
+	# Let's search in each entry of rss...
+	foreach my $rss_entry (@{$rss_source->{'items'}}) {
+		$title = lc($rss_entry->{'title'});
+		$description = lc($rss_entry->{'description'});
+		# ... and if we find the word in title ...
+		unless (index($title, $word) == -1 and index($description, $word) == -1)
+		{
+			print "Found $word at $title\n" if $DEBUG == 1;
+			
+			# ... then we put it on our final feed...
+			push @{$coruja->{'items'}}, $rss_entry;
+			
+			# ... and on our HTML file if needed...
+			writeLog("log.html","      <ul>\n") if $HTML == 1;
+			writeLog("log.html","        <li><font size=\"4\"><b>$rss_entry->{'title'}</b></font></li>\n") if $HTML == 1;
+			writeLog("log.html","        <b>Description:</b>$rss_entry->{'description'}<br>\n") if $HTML == 1;
+			writeLog("log.html","        <b>Link:</b><a href=\"$rss_entry->{'link'}\">$rss_entry->{'link'}</a><br>\n") if $HTML == 1;
+			writeLog("log.html","      </ul>\n") if $HTML == 1;
+		}
+	}
 }
 
 
@@ -105,136 +88,102 @@ sub feedParse{
 # and combines them with each word on wordlist
 # Call rssVerify("feedlist","wordlist")
 sub rssVerify{
-  # Indexing the RSS sites
-  my $sitelist = $_[0];
-  open(DATA, $sitelist) || die("Could not open file $sitelist!\n");
-  my @links = <DATA>;
-  close(DATA);
-  
-  # Indexing the words to search
-  my $wordlist = $_[1];
-  open(DATA, $wordlist) || die("Could not open file $wordlist!\n");
-  my @search = <DATA>;
-  close(DATA);
-  
-  # Variables to handle XML tags
-  my $versiontag = "<rss version=\"";
-  my $titletag = "<title>";
-  my $titletagend = "</title>";
-  
-  # Other variables
-  my $version;
-  my $title;
-  my $datetime = localtime();
-  
-  # Header of XML logfile
-  writeLog("log.xml","<?xml version=\"1.0\"?>\n");
-  writeLog("log.xml","<rss version=\"2.0\">\n");
-  writeLog("log.xml","\n");
-  # Header of HTML logfile
-  writeLog("log.html","<HTML><HEAD>\n");
-  writeLog("log.html","<title>Coruja Feed Parser Results</title>\n");
-  writeLog("log.html","<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n");
-  writeLog("log.html","</HEAD>\n");
-  writeLog("log.html","\n<body>\n");
-  
-  # Foreach $site, foreach $word...
-  foreach $site (@links){
-#    print "Parsing feed list...\n"; #DEBUG
-    $site = trim($site);
-    
-    # Filter empty and commented (#) lines
-    next if $site =~ /^#/;
-    next if $site =~ /^\n/;
-    next if $site =~ /^\r/;
-    next if $site eq "";
-    
-    $request = HTTP::Request->new(GET => $site);
-    $resource = $agent->request($request);
-    
-    # Extracting feed title
-    $title = $resource->content;
-    if (index($title, $titletag)>0){
-      $title = substr($title, index($title, $titletag)+charCount($titletag), index($title, $titletagend)-index($title, $titletag)-charCount($titletag));
-    }else{
-      $title = "No title tag ($titletag>) found.";
-    }
-    # Extracting feed version
-    $version = $resource->content;
-    if (index($version, $versiontag)>0){
-      $version = substr($version, index($version, "version=\"")+charCount("version=\""));
-      $version = substr($version, 0, index($version, "\""));
-    }else{
-      $version = "No version tag ($versiontag\">) found.";
-    }
-    
-    # Header on XML logfile of each feed
-	writeLog("log.xml","<channel>\n");
-    writeLog("log.xml","  <link>$site</link>\n");
-    writeLog("log.xml","  <title>$title</title>\n");
-	# A coleta da versao do RSS ta dando erro ainda. Precisa ser aprimorada.
-	#writeLog("log.xml","  <!--<description>RSS Version of this Feed: $version</description>-->\n");
-	writeLog("log.xml","  <description>by Coruja Feed Parser</description>\n");
-    writeLog("log.xml","  <pubDate>$datetime</pubDate>\n");
+	my $request;
+	my $resource;
 
-    # Header on HTML logfile of each feed
-	writeLog("log.html","<table border=\"1\" width=\"600\"><tr><td>\n");
-    writeLog("log.html","  <h1>$title</h1>\n");
-	# A coleta da versao do RSS ta dando erro ainda. Precisa ser aprimorada.
-	writeLog("log.html","  <h2>RSS Version of this Feed: $version</h2>\n");
-    writeLog("log.html","  <h2>$datetime</h2>\n");
-	writeLog("log.html","  <h3>by Coruja Feed Parser</h3>\n");
-    writeLog("log.html","  <a href=\"$site\">ORIGINAL RSS FEED LINK</a>\n");
-    
-    foreach $word (@search){
-#      print "Parsing word list...\n"; #DEBUG
-      $word = trim($word);
-      
-      # Filter empty and commented (#) lines
-      next if $word =~ /^#/;
-      next if $word =~ /^\n/;
-      next if $word =~ /^\r/;
-      next if $word eq "";
-      
-      feedParse($site, $word, $resource);
-    }
+	# List files (names)
+	my $sitelistfilename = shift;
+	my $wordlistfilename = shift;
 
-	# Closing XML Logfile feed header
-    writeLog("log.xml","</channel>\n");
-    writeLog("log.xml","\n");
-	# Closing HTML Logfile feed header
-    writeLog("log.html","</td></tr></table>\n");
-    writeLog("log.html","\n");
-  }
-  # Closing XML Logfile
-  writeLog("log.xml","</rss>\n");
-  writeLog("log.xml","\n");
-  # Closing HTML Logfile
-  writeLog("log.html","</body></html>\n");
-  writeLog("log.html","\n");
+	# Feed Attrs
+	my $feedtitle;
+	my $feeddescription;
+	my $feedlink;
+	my $feedpubdate;
+	
+	# Get RSS list to check.
+	open(DATA, $sitelistfilename) || die("Could not open file $sitelistfilename!\n");
+	my @links = <DATA>;
+	close(DATA);
+  
+	# Get wordlist to check.
+	open(DATA, $wordlistfilename) || die("Could not open file $wordlistfilename!\n");
+	my @search = <DATA>;
+	close(DATA);
+
+
+	print "Parsing feed list...\n" if $DEBUG == 1;
+  
+	# Let's check out feed then...
+	foreach my $site (@links){
+		$site = trim($site);
+    
+		# Filter empty and commented (#) lines
+		next if $site =~ /^#/;
+		next if $site =~ /^\n/;
+		next if $site =~ /^\r/;
+		next if $site eq "";
+    
+		$request = HTTP::Request->new(GET => $site);
+		$resource = $agent->request($request);
+
+		# Parsing do XML
+		$rss_source->parse($resource->content());
+
+		# Extracting feed title
+		$feedtitle = $rss_source->channel('title');
+		$feeddescription = $rss_source->channel('description');
+		$feedlink = $rss_source->channel('link');
+		$feedpubdate = $rss_source->channel('pubdate');
+		
+		print "Parsing $feedtitle ($site)...\n";
+		
+		# Writing HTML info
+		writeLog("log.html","<table width=\"600\" border=\"1\">\n") if $HTML == 1;
+		writeLog("log.html","  <tr>\n") if $HTML == 1;
+		writeLog("log.html","    <td>\n") if $HTML == 1;
+		writeLog("log.html","      <font size=\"5\">$feedtitle</font><br>\n") if $HTML == 1;
+		writeLog("log.html","      <font size=\"4\">$feeddescription</font><br>\n") if $HTML == 1;
+# TODO: Fetch pubdate of each feed
+#		writeLog("log.html","      <font size=\"4\">$feedpubdate</font><br>\n") if $HTML == 1;
+		writeLog("log.html","      <font size=\"2\"><a href=\"$feedlink\">$feedlink</a></font><br>\n") if $HTML == 1;
+		writeLog("log.html","      <font size=\"2\"><a href=\"$site\">[original feed]</a></font><br>\n") if $HTML == 1;
+		writeLog("log.html","      <br><br>\n") if $HTML == 1;
+		
+		#Let's see if we find our work there ;)
+		foreach my $word (@search){
+			$word = trim($word);
+      
+			# Filter empty and commented (#) lines
+			next if $word =~ /^#/;
+			next if $word =~ /^\n/;
+			next if $word =~ /^\r/;
+			next if $word eq "";
+      
+			feedParse($word);
+		}
+		# Closing HTML info
+		writeLog("log.html","	</td>\n") if $HTML == 1;
+		writeLog("log.html","  </tr>\n") if $HTML == 1;
+		writeLog("log.html","</table>\n") if $HTML == 1;
+	}
+
+	# Now, let's check to see if we didn't included duplicade entries:
+	@{$coruja->{'items'}} = uniq @{$coruja->{'items'}};
+	
+	# Closing HTML Logfile
+	writeLog("log.html","</body>\n") if $HTML == 1;
+	writeLog("log.html","</html>\n") if $HTML == 1;
+	
+	# Closing XML Logfile
+	$coruja->save('coruja.xml');
 }
 
-
-
 print "Running... Please be sure you have internet connectivity!\n";
-rssVerify("links", "patterns");
+rssVerify("links.txt", "patterns.txt");
 
 # Verifying written log
-open(DATA, "log.xml") || die("ERROR: No log.xml generated! Please run again...\n");
-my @log = <DATA>;
+open(DATA, "coruja.xml") || die("ERROR: No coruja.xml generated! Please run again...\n");
 close(DATA);
-my $line;
 
-# Converting log to HTML...
-#foreach $line (@log){
-#  $line =~ s/<\?xml version\=\"1\.0\"\?>/<html>/;
-#  $line =~ s/<rss version\=\"2\.0\">/<body>/;
-#  $line =~ s/<\/rss>/<\/body>/;
-#  $line =~ s/<channel>/<table><tr><td border=\"1\">/;
-#  $line =~ s/<\/channel>/<\/td><\/tr><\/table>/;
-#  $line =~ s/\<link\>/\<a\ href\=\"/;
-#  $line =~ s/\<\/link\>/\"\>LINK\<\/a\>/;
-#  writeLog("log.html",$line);
-#}
-
-print "Info succesfully attached to log!\n";
+print "Log successfully generated!\n";
