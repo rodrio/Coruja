@@ -6,11 +6,18 @@ use LWP::UserAgent;
 use HTTP::Request;
 use XML::RSS;
 use List::MoreUtils qw(uniq);
+use App::Rad;
 
-# Global variables
-my $rss_source = new XML::RSS;
-my $DEBUG = 0;
-my $HTML = 1;
+
+# Set-up for App::Rad
+sub setup{
+
+	my $app = shift;
+
+	# We really don't have subcommands :P
+	$app->register_commands(qw(xml html));
+	
+}
 
 # Create a global user agent object
 my $agent = LWP::UserAgent->new;
@@ -19,18 +26,35 @@ $agent->agent("Coruja v0.2");
 # Start XML Logfile
 my $coruja = new XML::RSS(version => '1.0');
 $coruja->channel(
-	title => "Coruja Feed Parser",
+	title => "Coruja Feed Parser v0.2",
 	link => "http://www.gris.dcc.ufrj.br",
 	description => "We watch it for you! ;)"
 );
 
-# Start HTML Logfile
-writeLog("log.html","<html>\n") if $HTML==1;
-writeLog("log.html","<head>\n") if $HTML==1;
-writeLog("log.html","<title>Coruja Feed Parser Results - We watch it for you! ;)</title>\n") if $HTML==1;
-writeLog("log.html","<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n") if $HTML==1;
-writeLog("log.html","</HEAD>\n\n") if $HTML==1;
-writeLog("log.html","<body>\n") if $HTML==1;
+my $rss_source = new XML::RSS;
+my $DEBUG = 0;
+
+#Files:
+my $patfile = "patterns.txt";
+my $linksfile = "links.txt";
+my $xmloutput = "coruja.xml";
+my $htmloutput = "coruja.htm";
+
+# Mode of operation:
+# 0 = xml
+# 1 = html
+my $opmode = 0;
+
+# HTML output buffer:
+my $htmloutbuf;
+
+# First... let's build the initial html struct...
+$htmloutbuf = "<html>\n";
+$htmloutbuf .= "<head>\n";
+$htmloutbuf .= "<title>Coruja Feed Parser Results - We watch it for you! ;)</title>\n";
+$htmloutbuf .= "<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n";
+$htmloutbuf .= "</HEAD>\n\n";
+$htmloutbuf .= "<body>\n";
 
 # Function that trims words
 # call trim("word");
@@ -43,16 +67,8 @@ sub trim{
 
 # Function that writes the output into a file
 # call writeLog("logfile", "String to write");
-sub writeLog{
- 	my $logfile = shift;
- 	my $str = shift;
-  
-	open (LOG, ">>$logfile") or die "----> Could not open $logfile $!\n";
-	print LOG $str;
-	close LOG;
-}
 
-# Function that uses searches $rss_source for a word/pattern
+# Function that searches $rss_source for a word/pattern
 # Call feedParse("pattern")
 sub feedParse{
 	# Receiving resources
@@ -63,22 +79,26 @@ sub feedParse{
 	$word = lc($word);
 	# Let's search in each entry of rss...
 	foreach my $rss_entry (@{$rss_source->{'items'}}) {
+
 		$title = lc($rss_entry->{'title'});
 		$description = lc($rss_entry->{'description'});
 		# ... and if we find the word in title ...
 		unless (index($title, $word) == -1 and index($description, $word) == -1)
 		{
 			print "Found $word at $title\n" if $DEBUG == 1;
-			
-			# ... then we put it on our final feed...
+			# ... then we put it on our final feed.
 			push @{$coruja->{'items'}}, $rss_entry;
-			
-			# ... and on our HTML file if needed...
-			writeLog("log.html","      <ul>\n") if $HTML == 1;
-			writeLog("log.html","        <li><font size=\"4\"><b>$rss_entry->{'title'}</b></font></li>\n") if $HTML == 1;
-			writeLog("log.html","        <b>Description:</b>$rss_entry->{'description'}<br>\n") if $HTML == 1;
-			writeLog("log.html","        <b>Link:</b><a href=\"$rss_entry->{'link'}\">$rss_entry->{'link'}</a><br>\n") if $HTML == 1;
-			writeLog("log.html","      </ul>\n") if $HTML == 1;
+
+
+			if($opmode == 1)
+			{
+				# ... now, we get our item feed and put it there ...
+				$htmloutbuf .= "      <ul>\n";
+				$htmloutbuf .= "        <li><font size=\"4\"><b>$rss_entry->{'title'}</b></font></li>\n";
+				$htmloutbuf .= "        <b>Description:</b>$rss_entry->{'description'}<br>\n" if ($rss_entry->{'description'});
+				$htmloutbuf .= "        <b>Link:</b><a href=\"$rss_entry->{'link'}\">$rss_entry->{'link'}</a><br>\n";
+				$htmloutbuf .= "      </ul>\n";
+			}
 		}
 	}
 }
@@ -111,6 +131,14 @@ sub rssVerify{
 	my @search = <DATA>;
 	close(DATA);
 
+	if($opmode == 1)
+	{
+		$htmloutbuf .= "<table width=\"600\" border=\"1\">\n";
+		$htmloutbuf .= "  <tr>\n";
+		$htmloutbuf .= "    <td>\n";
+	}
+
+
 
 	print "Parsing feed list...\n" if $DEBUG == 1;
   
@@ -138,17 +166,17 @@ sub rssVerify{
 		
 		print "Parsing $feedtitle ($site)...\n";
 		
-		# Writing HTML info
-		writeLog("log.html","<table width=\"600\" border=\"1\">\n") if $HTML == 1;
-		writeLog("log.html","  <tr>\n") if $HTML == 1;
-		writeLog("log.html","    <td>\n") if $HTML == 1;
-		writeLog("log.html","      <font size=\"5\">$feedtitle</font><br>\n") if $HTML == 1;
-		writeLog("log.html","      <font size=\"4\">$feeddescription</font><br>\n") if $HTML == 1;
-# TODO: Fetch pubdate of each feed
-#		writeLog("log.html","      <font size=\"4\">$feedpubdate</font><br>\n") if $HTML == 1;
-		writeLog("log.html","      <font size=\"2\"><a href=\"$feedlink\">$feedlink</a></font><br>\n") if $HTML == 1;
-		writeLog("log.html","      <font size=\"2\"><a href=\"$site\">[original feed]</a></font><br>\n") if $HTML == 1;
-		writeLog("log.html","      <br><br>\n") if $HTML == 1;
+		if($opmode == 1)
+		{
+			# Building HTML structure
+			$htmloutbuf .= "      <font size=\"5\">$feedtitle</font><br>\n";
+			$htmloutbuf .= "      <font size=\"4\">$feeddescription</font><br>\n";
+			# TODO: Fetch pubdate of each feed
+			#$htmloutbuf .= "      <font size=\"4\">$feedpubdate</font><br>\n";
+			$htmloutbuf .= "      <font size=\"2\"><a href=\"$feedlink\">$feedlink</a></font><br>\n";
+			$htmloutbuf .= "      <font size=\"2\"><a href=\"$site\">[original feed]</a></font><br>\n";
+			$htmloutbuf .= "      <br><br>\n";
+		}
 		
 		#Let's see if we find our work there ;)
 		foreach my $word (@search){
@@ -162,28 +190,88 @@ sub rssVerify{
       
 			feedParse($word);
 		}
-		# Closing HTML info
-		writeLog("log.html","	</td>\n") if $HTML == 1;
-		writeLog("log.html","  </tr>\n") if $HTML == 1;
-		writeLog("log.html","</table>\n") if $HTML == 1;
 	}
 
-	# Now, let's check to see if we didn't included duplicade entries:
+	# And before saving, we check to see if we didn't included duplicade entries:
 	@{$coruja->{'items'}} = uniq @{$coruja->{'items'}};
+
+
+	if($opmode == 1) #html
+	{
+		$htmloutbuf .= "	</td>\n";
+		$htmloutbuf .= "  </tr>\n";
+		$htmloutbuf .= "</table>\n";
+		$htmloutbuf .= "</body>\n</html>\n";
+
+		my $DATA;
+		open($DATA, '>', $htmloutput);
+		print $DATA $htmloutbuf;
+		close($DATA);
+
+		open($DATA, $htmloutput) || die("ERROR: No $htmloutput generated! Please run again...\n");
+		close($DATA);
+	}
+
+	# Closing and saving XML file
+	$coruja->save($xmloutput);
 	
-	# Closing HTML Logfile
-	writeLog("log.html","</body>\n") if $HTML == 1;
-	writeLog("log.html","</html>\n") if $HTML == 1;
-	
-	# Closing XML Logfile
-	$coruja->save('coruja.xml');
+	my $DATA;
+	open($DATA, $xmloutput) || die("ERROR: No $xmloutput generated! Please run again...\n");
+	close($DATA);
 }
 
-print "Running... Please be sure you have internet connectivity!\n";
-rssVerify("links.txt", "patterns.txt");
+sub main{
+	print "Starting Coruja... Please be sure you have internet connectivity!\n";
+	rssVerify($linksfile, $patfile);
+	print "Info succesfully attached to log!\n";
+	return undef;
+}
 
-# Verifying written log
-open(DATA, "coruja.xml") || die("ERROR: No coruja.xml generated! Please run again...\n");
-close(DATA);
+sub xml
+:Help(Generate only xml file as output. [DEFAULT]
+			You can pass the following options to Coruja in xml mode:
+      			--patterns=patternsfile.txt - Read patterns from patternsfile.txt
+			--feeds=linksfile.txt - Read feeds link from linksfile.txt
+			--xmlout=coruja.xml - Output the xml to coruja.xml){
+				
+	my $c = shift;
+	main();
 
-print "Log successfully generated!\n";
+	return undef;
+}
+
+sub html
+:Help(Generate a xml and a html file as output. Good to preview the final feed.
+      			You can pass the following options to Coruja in html mode:
+      			--patterns=patternsfile.txt - Read patterns from patternsfile.txt
+			--feeds=linksfile.txt - Read feeds link from linksfile.txt
+			--htmlout=coruja.html - Output the html to coruja.html
+			--xmlout=coruja.xml - Output the xml to coruja.xml){
+	my $c = shift;
+
+	$opmode = 1;
+	main();
+
+	return undef;
+}
+
+# Let's check for options \o/
+sub pre_process{
+	my $c = shift;
+	
+	$patfile = $c->options->{'patterns'} if $c->options->{'patterns'};
+	$linksfile = $c->options->{'feeds'} if $c->options->{'feeds'};
+	$xmloutput = $c->options->{'xmlout'} if $c->options->{'xmlout'};
+	$htmloutput = $c->options->{'htmlout'} if $c->options->{'htmlout'};
+}
+
+
+sub default{
+	my $c = shift;
+
+	main(); # Execute xml mode as default
+	return undef;
+}
+
+App::Rad->run();
+

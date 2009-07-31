@@ -7,11 +7,10 @@
 #                                                  #
 #                                                  #
 # Authors:                                         #
-#		Rodrigo M. T. Fernandez                    #
-#		Bruno Caricchio Buss                       #
-#                                                  #
+#          Rodrigo M. T. Fernandez                 #
+#          Bruno Caricchio Buss                    #
 # License:                                         #
-#		Open Source                                #
+#		Open Source                        #
 #                                                  #
 #                                                  #
 #           ________________________               #
