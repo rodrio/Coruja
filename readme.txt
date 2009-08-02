@@ -1,8 +1,8 @@
 ####################################################
 # Coruja Feed Parser v0.2                          #
 #                                                  #
-# Grupo de Resposta a Incidentes de Segurança      #
-# Departamento de Ciência da Computação            #
+# Grupo de Resposta a Incidentes de Seguranï¿½a      #
+# Departamento de Ciï¿½ncia da Computaï¿½ï¿½o            #
 # Universidade Federal do Rio de Janeiro           #
 #                                                  #
 #                                                  #
@@ -25,18 +25,20 @@ Current version: v0.2
 Changelog:
 
     * v.0.1:
-		o Busca por tags <item> e </item> selecionando o que há entre elas quando uma word da wordlist é encontrada entre elas 
+		o Busca por tags <item> e </item> selecionando o que hï¿½ entre elas quando uma word da wordlist ï¿½ encontrada entre elas 
 		o Retorna um txt contendo o conteudo selecionado
 
     * v 0.2:
-		o Verificar versão do RSS Feed que está sendo checado
+		o Verificar versï¿½o do RSS Feed que estï¿½ sendo checado
 		o use tag # for comments in input files and ignore blank lines 
-		o Verificar e testar o trecho do código que remove os itens já verificados (deferred)
-		o Testar se no feed existe alguma pattern da wordlist mas não existe as tags <item> e </item> (deferred)
-		o Gerar saída em HTML/XML
-		o Para cada pattern da wordlist, fazer uma combinação de possíveis variações e usá-las para identificar aquela pattern dentro do feed (intention to future versions)
+		o Verificar e testar o trecho do cï¿½digo que remove os itens jï¿½ verificados (deferred)
+		o Testar se no feed existe alguma pattern da wordlist mas nï¿½o existe as tags <item> e </item> (deferred)
+		o Gerar saï¿½da em HTML/XML
+		o Para cada pattern da wordlist, fazer uma combinaï¿½ï¿½o de possï¿½veis variaï¿½ï¿½es e usï¿½-las para identificar aquela pattern dentro do feed (intention to future versions)
 
 	* v 0.3 (implementar):
-		o Aprovar ou negar as entradas do linklist e da wordlist (proteção)
+		o Aprovar ou negar as entradas do linklist e da wordlist (proteï¿½ï¿½o)
 			+ verify if links are valid XML resources before performing any actions (implementar)
 		o Incluir leitura de feeds no formato ATOM (http://tools.ietf.org/html/rfc4287)
+
+NOTE: http://rssgov.com/rssparsers.html
