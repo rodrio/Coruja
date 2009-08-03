@@ -231,8 +231,8 @@ MAIN: {
   $corujamenu->command( -label   =>  'Load Feeds', -command =>  \&loadFeeds );
   $corujamenu->command( -label   =>  'Load Patterns', -command => \&loadPatterns  );
   $corujamenu->separator();
-  $corujamenu->command(-label   => 'Configuration...', -command => \&doConfig );
-  $corujamenu->separator();
+#  $corujamenu->command(-label   => 'Configuration...', -command => \&doConfig );
+#  $corujamenu->separator();
   $corujamenu->command(-label => 'Exit', -command => sub {exit;} );
   $corujamenu->pack(-side => 'left');
   my $helpmenu = $menubar->Menubutton(-text => 'Help');
@@ -325,9 +325,29 @@ MAIN: {
   # Bottom 2 Frame (Operation button)
   $bottom2->Button(-text => 'Watch it for me!',
 				  -width => 17,
-                  -command => \&run )->
+                  -command => \&GUIexecute)->
                   grid(qw/-row 0 -column 0 -sticky e/);
 
+}
+
+sub loadFeeds{
+  # Types are listed in the dialog widget
+  my @types = (["Text Files", ".txt"],
+               ["All Files", "*"] );
+  
+  $config->{FEEDSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+}
+
+sub loadPatterns{
+  # Types are listed in the dialog widget
+  my @types = (["Text Files", ".txt"],
+               ["All Files", "*"] );
+  
+  $config->{PATTERNSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+}
+
+sub GUIexecute(){
+	rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
 }
 
 ########################
@@ -345,14 +365,6 @@ sub pre_process{
 	# App::Rad internals
 	# Checking for options...
 	my $c = shift;
-	# Check if user is looking for help with -h or --help
-	if($c->options->{'help'} or $c->options->{'h'}){
-		print
-			"\n".
-			"For general help: '$0 help'\n".
-			"For specific module help: '$0 [gui|xml|html] --help'\n\n";
-		exit;
-		}
 	
 	# Check if user wants to see version information with -v, -V or --version
 	if($c->options->{'version'} or $c->options->{'V'} or $c->options->{'v'}){
@@ -367,12 +379,24 @@ sub pre_process{
 	$config->{FEEDSFILENAME} = $c->options->{'feeds'} if $c->options->{'feeds'};
 	$output->{XMLFILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
 	$output->{HTMLFILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
+	$config->{MODE} = 'GUI'; #Execute GUI mode as default
 }
 
 sub default{
 	# App::Rad internals
 	# If no App::Rad mode is defined on terminal command, run default()
-	main(); # Execute GUI mode as default
+	my $c = shift;
+
+	# Check if user is looking for help with -h or --help
+	if($c->options->{'help'} or $c->options->{'h'}){
+		print
+			"\n".
+			"For general help: '$0 help'\n".
+			"For specific module help: '$0 [gui|xml|html] --help'\n\n";
+		exit;
+		}
+
+	main(); 
 	return undef;
 }
 
@@ -392,7 +416,7 @@ sub gui
 		}
 
 	$output->{MODE} = 'XML';
-	$config->{MODE} = 'GUI';
+	$config->{MODE} = 'GUI'; #Execute GUI mode as default
 	main();
 	return undef;
 }
@@ -481,7 +505,7 @@ sub main{
 			eval MainLoop();   # Start the event processing
 		}
 	}else{
-		rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
+#		rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
 	}
 	print "Coruja has ended checking your feeds!\n";
 	print "Enjoy!\n";
