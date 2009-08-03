@@ -8,6 +8,9 @@ use XML::RSS;
 use List::MoreUtils qw(uniq);
 use App::Rad;
 
+my $CORUJA_VERSION = 0.3;
+my $CORUJA_DEV = "-pre1"; #ON launch of a stable version, set this as "".
+my $CORUJA_URL = "http://www.gris.dcc.ufrj.br";
 
 # Set-up for App::Rad
 sub setup{
@@ -21,13 +24,13 @@ sub setup{
 
 # Create a global user agent object
 my $agent = LWP::UserAgent->new;
-$agent->agent("Coruja v0.2");
+$agent->agent("Coruja v" . $CORUJA_VERSION . $CORUJA_DEV);
 
 # Start XML Logfile
 my $coruja = new XML::RSS(version => '1.0');
 $coruja->channel(
-	title => "Coruja Feed Parser v0.2",
-	link => "http://www.gris.dcc.ufrj.br",
+	title => "Coruja Feed Parser v" . $CORUJA_VERSION . $CORUJA_DEV,
+	link => $CORUJA_URL,
 	description => "We watch it for you! ;)"
 );
 
@@ -38,7 +41,7 @@ my $DEBUG = 0;
 my $patfile = "patterns.txt";
 my $linksfile = "links.txt";
 my $xmloutput = "coruja.xml";
-my $htmloutput = "coruja.htm";
+my $htmloutput = "coruja.html";
 
 # Mode of operation:
 # 0 = xml
@@ -221,7 +224,7 @@ sub rssVerify{
 }
 
 sub main{
-	print "Starting Coruja... Please be sure you have internet connectivity!\n";
+	print "Starting Coruja v" . $CORUJA_VERSION . $CORUJA_DEV . "... Please be sure you have internet connectivity!\n";
 	rssVerify($linksfile, $patfile);
 	print "Info succesfully attached to log!\n";
 	return undef;
@@ -233,8 +236,29 @@ sub xml
       			--patterns=patternsfile.txt - Read patterns from patternsfile.txt
 			--feeds=linksfile.txt - Read feeds link from linksfile.txt
 			--xmlout=coruja.xml - Output the xml to coruja.xml){
-				
+	
 	my $c = shift;
+
+	if($c->options->{'help'} or $c->options->{'h'})
+	{
+		print   "\n" .
+			"The xml output model is the Coruja's default operation mode.\n\n" .
+			"At xml mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
+			"Then it will create a new RSS valid file, with the result from the search.\n\n." .
+			"Coruja at xml options accept these options:\n\n" .
+			"--patterns=patternsfile.txt\n" .
+			"\tThis option tell Coruja to look at words in the patternsfile.txt.\n" .
+			"--feeds=linksfile.txt\n" .
+			"\tThis option tell Coruja to parse the feeds at specified URLs.\n" .
+			"--xmlout=coruja.xml\n" .
+			"\tThis option tell Coruja to output the final feed to coruja.xml.\n" .
+			"\n" .
+			"To know more about Coruja, go to GRIS website: $CORUJA_URL\n\n";
+
+		exit;
+	}
+	
+	
 	main();
 
 	return undef;
@@ -249,6 +273,27 @@ sub html
 			--xmlout=coruja.xml - Output the xml to coruja.xml){
 	my $c = shift;
 
+	if($c->options->{'help'} or $c->options->{'h'})
+	{
+		print   "\n" .
+		"At html mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
+		"Then it will create a new RSS valid file, with the result from the search AND generate an html file.\n" .
+		"The purpose of this html file is just for a quick preview and see what items Coruja got, without the need to go through the xml file.\n\n".
+		"Coruja at html options accept these options:\n\n" .
+		"--patterns=patternsfile.txt\n" .
+		"\tThis option tell Coruja to look at words in the patternsfile.txt.\n" .
+		"--feeds=linksfile.txt\n" .
+		"\tThis option tell Coruja to parse the feeds at specified URLs.\n" .
+		"--xmlout=coruja.xml\n" .
+		"\tThis option tell Coruja to output the final feed to coruja.xml.\n" .
+		"--htmlout=coruja.html\n" .
+		"\tThis option tell Coruja to output the html file to coruja.html.\n" .
+		"\n" .
+		"To know more about Coruja, go to GRIS website: $CORUJA_URL\n\n";
+
+		exit;
+	}
+
 	$opmode = 1;
 	main();
 
@@ -258,7 +303,15 @@ sub html
 # Let's check for options \o/
 sub pre_process{
 	my $c = shift;
-	
+
+	if($c->options->{'version'} or $c->options->{'V'})
+	{
+		print   "Coruja v" . $CORUJA_VERSION . $CORUJA_DEV . "\n".
+			"Visit $CORUJA_URL for more information about Coruja and other projects developed by GRIS.\n\n";
+
+		exit;
+	}
+
 	$patfile = $c->options->{'patterns'} if $c->options->{'patterns'};
 	$linksfile = $c->options->{'feeds'} if $c->options->{'feeds'};
 	$xmloutput = $c->options->{'xmlout'} if $c->options->{'xmlout'};
@@ -268,6 +321,15 @@ sub pre_process{
 
 sub default{
 	my $c = shift;
+
+
+	if($c->options->{'help'} or $c->options->{'h'})
+	{
+		print   "\n".
+			"For general help: '$0 help'\n".
+			"For specific module help: '$0 [xml|html] --help'\n\n";
+		exit;
+	}
 
 	main(); # Execute xml mode as default
 	return undef;
