@@ -24,7 +24,7 @@ my $mainwindow;
 my $rss_source = new XML::RSS;
 my $DEBUG = 0;
 # GUI Output choosing options
-my @outputmode = ('XML','HTML','XML and HTML');
+my @outputmode = ('XML','HTML');
 # Create a global user agent object
 my $agent = LWP::UserAgent->new;
 $agent->agent("Coruja v" . $CORUJA_VERSION . $CORUJA_DEV);
@@ -43,16 +43,16 @@ $xmloutbuf->channel(
 	link => $CORUJA_URL,
 	description => "We watch it for you! ;)"
 );
-#Files:
+#Hash Vectors:
 my $config = {
 	MODE => 'GUI',
 	FEEDSFILENAME => 'links.txt',
 	PATTERNSFILENAME => 'patterns.txt',
 	};
 my $output = {
-	MODE => 'XML',
-	XMLFILENAME => 'coruja.xml',
-	HTMLFILENAME => 'coruja.html',
+	MODE => '',
+	FILENAME => 'coruja',
+	FULLFILENAME => '',
 	};
 
 ###############
@@ -102,10 +102,10 @@ sub feedParse{
 	}
 }
 
-sub rssVerify{
+sub corujaStart{
 # Function that performs the HTTP Request to check each link on feedlist
 # and combines them with each word on wordlist
-# Call rssVerify("feedlist","wordlist")
+# Call corujaStart("feedlist","wordlist")
 	my $request;
 	my $resource;
 
@@ -202,19 +202,19 @@ sub rssVerify{
 		$htmloutbuf .= "</body>\n</html>\n";
 
 		my $DATA;
-		open($DATA, '>', $output->{HTMLFILENAME});
+		open($DATA, '>', $output->{FULLFILENAME});
 		print $DATA $htmloutbuf;
 		close($DATA);
 
-		open($DATA, $output->{HTMLFILENAME}) || die("ERROR: No $output->{HTMLFILENAME} generated! Please run again...\n");
+		open($DATA, $output->{FULLFILENAME}) || die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
 		close($DATA);
 	}
 
 	# Closing and saving XML file
-	$xmloutbuf->save($output->{XMLFILENAME});
+	$xmloutbuf->save($output->{FULLFILENAME});
 	
 	my $DATA;
-	open($DATA, $output->{XMLFILENAME}) || die("ERROR: No $output->{XMLFILENAME} generated! Please run again...\n");
+	open($DATA, $output->{FULLFILENAME}) || die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
 	close($DATA);
 }
 
@@ -284,6 +284,7 @@ MAIN: {
   $top->Optionmenu(
 					-options => \@outputmode,
 					-variable => \$output->{MODE},
+					-command => \&setOutputExtension
 					)->grid(-row => 0, -column => 1,-sticky => 'w');
 
   # Up Left Frame
@@ -309,26 +310,10 @@ MAIN: {
 			  )->grid(-row => 0, -column => 0, -sticky => 'w');
   
   # Bottom Left Frame
-  if ($output->{MODE} eq 'XML'){
 	$bottomleft->Label(-text => 'Output File:')->
                 grid(-row => 0, -column => 0,-sticky => 'w');
-	$bottomleft->Label(-textvariable => \$output->{XMLFILENAME})->
+	$bottomleft->Label(-textvariable => \$output->{'FULLFILENAME'})->
                 grid(-row => 0, -column => 1,-sticky => 'w');
-  }elsif($output->{MODE} eq 'HTML'){
-	$bottomleft->Label(-text => 'Output File:')->
-                grid(-row => 1, -column => 0,-sticky => 'w');
-	$bottomleft->Label(-textvariable => \$output->{HTMLFILENAME})->
-                grid(-row => 1, -column => 1,-sticky => 'w');
-  }elsif($output->{MODE} eq 'XML and HTML'){
-	$bottomleft->Label(-text => 'Output File:')->
-                grid(-row => 0, -column => 0,-sticky => 'w');
-	$bottomleft->Label(-textvariable => \$output->{XMLFILENAME})->
-                grid(-row => 0, -column => 1,-sticky => 'w');
-	$bottomleft->Label(-text => 'Output File:')->
-                grid(-row => 1, -column => 0,-sticky => 'w');
-	$bottomleft->Label(-textvariable => \$output->{HTMLFILENAME})->
-                grid(-row => 1, -column => 1,-sticky => 'w');
-  }
   
   # Bottom Right Frame
   
@@ -346,35 +331,28 @@ MAIN: {
 
 }
 
+###################
+# GUI subroutines #
+###################
 sub loadFeeds{
-  # Types are listed in the dialog widget
-  my @types = (["Text Files", ".txt"],
-               ["All Files", "*"] );
-  
-  $config->{FEEDSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+	my @types = (["Text Files", ".txt"],["All Files", "*"]);
+	$config->{FEEDSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
 }
 
 sub loadPatterns{
-  # Types are listed in the dialog widget
-  my @types = (["Text Files", ".txt"],
-               ["All Files", "*"] );
-  
-  $config->{PATTERNSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+	my @types = (["Text Files", ".txt"],["All Files", "*"]);
+	$config->{PATTERNSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
 }
 
 sub setOutputFilename{
-  $output->{XMLFILENAME} = $mainwindow->getSaveFile().".xml" if $output->{MODE} eq 'XML';
-  $output->{HTMLFILENAME} = $mainwindow->getSaveFile().".html" if $output->{MODE} eq 'HTML';
-  if ($output->{MODE} eq 'XML and HTML'){
-	my $error = $mainwindow->DialogBox(-title => "Error",-buttons => ["Oops!"]);
-	$error->Label(-text =>
-				"The mode 'XML and HTML' does not allow you to choose the filenames yet\n".
-				"Please wait for a future version!\n"
-				)->
-                grid(-row => 0, -column => 0,-sticky => 'w');
-    my $result = $error->Show;
+	$output->{'FILENAME'} = $mainwindow->getSaveFile();
+	setOutputExtension();
+}
 
-  }
+sub setOutputExtension{
+	$output->{'FULLFILENAME'} = $output->{'FILENAME'}.".xml" if $output->{MODE} eq 'XML';
+	$output->{'FULLFILENAME'} = $output->{'FILENAME'}.".html" if $output->{MODE} eq 'HTML';
+	$mainwindow->update();
 }
 
 sub displayHelp(){
@@ -418,7 +396,7 @@ sub displayAbout(){
 }
 
 sub GUIexecute(){
-	rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
+	corujaStart($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
 }
 
 ########################
@@ -445,11 +423,19 @@ sub pre_process{
 		exit;
 		}
 	
+	# Only one output mode allowed. Checking...
+	if($c->options->{'xmlout'} and $c->options->{'htmlout'}){
+		print
+			"ERROR: Only one output mode allowed.\n\n".
+			"For general help: '$0 help'\n".
+			"For specific module help: '$0 [gui|xml|html] --help'\n\n";
+		exit;
+		}
 	# Now, define variables passed as options
 	$config->{PATTERNSFILENAME} = $c->options->{'patterns'} if $c->options->{'patterns'};
 	$config->{FEEDSFILENAME} = $c->options->{'feeds'} if $c->options->{'feeds'};
-	$output->{XMLFILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
-	$output->{HTMLFILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
+	$output->{FULLFILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
+	$output->{FULLFILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
 	$config->{MODE} = 'GUI'; #Execute GUI mode as default
 }
 
@@ -486,18 +472,17 @@ sub gui
 		exit;
 		}
 
-	$output->{MODE} = 'XML';
 	$config->{MODE} = 'GUI'; #Execute GUI mode as default
 	main();
 	return undef;
 }
 
 sub xml
-:Help(Generate only xml file as output.
-			You can pass the following options to Coruja in xml mode:
+:Help(Generate only XML file as output.
+			You can pass the following options to Coruja in XML mode:
       		--patterns=patternsfile.txt - Read patterns from patternsfile.txt
 			--feeds=linksfile.txt - Read feeds link from linksfile.txt
-			--xmlout=coruja.xml - Output the xml to coruja.xml){
+			--xmlout=coruja.xml - Output the XML to coruja.xml){
 	
 	my $c = shift;
 
@@ -506,7 +491,7 @@ sub xml
 		print   "\n" .
 			"At XML mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
 			"Then it will create a new RSS valid file, with the result from the search.\n\n." .
-			"Coruja at xml options accept these options:\n\n" .
+			"Coruja at XML mode accept these options:\n\n" .
 			"--patterns=patternsfile.txt\n" .
 			"\tThis option tell Coruja to look at words in the patternsfile.txt.\n" .
 			"--feeds=linksfile.txt\n" .
@@ -527,27 +512,24 @@ sub xml
 }
 
 sub html
-:Help(Generate a xml and a html file as output. Good to preview the final feed.
-      			You can pass the following options to Coruja in html mode:
+:Help(Generate a HTML file as output. Good to preview the final feed.
+      			You can pass the following options to Coruja in HTML mode:
       		--patterns=patternsfile.txt - Read patterns from patternsfile.txt
 			--feeds=linksfile.txt - Read feeds link from linksfile.txt
-			--htmlout=coruja.html - Output the html to coruja.html
-			--xmlout=coruja.xml - Output the xml to coruja.xml){
+			--htmlout=coruja.html - Output the html to coruja.html){
 	my $c = shift;
 
 	if($c->options->{'help'} or $c->options->{'h'})
 	{
 		print   "\n" .
-		"At html mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
-		"Then it will create a new RSS valid file, with the result from the search AND generate an html file.\n" .
-		"The purpose of this html file is just for a quick preview and see what items Coruja got, without the need to go through the xml file.\n\n".
-		"Coruja at html options accept these options:\n\n" .
+		"At html mode, Coruja will parse all the feeds, looking for defined words at all entry's title and description.\n" .
+		"Then it will create a new HTML file, with the result from the search.\n" .
+		"The purpose of this HTML file is just for a quick preview and see what items Coruja got, without the need to go through the XML file.\n\n".
+		"Coruja at HTML options accept these options:\n\n" .
 		"--patterns=patternsfile.txt\n" .
 		"\tThis option tell Coruja to look at words in the patternsfile.txt.\n" .
 		"--feeds=linksfile.txt\n" .
 		"\tThis option tell Coruja to parse the feeds at specified URLs.\n" .
-		"--xmlout=coruja.xml\n" .
-		"\tThis option tell Coruja to output the final feed to coruja.xml.\n" .
 		"--htmlout=coruja.html\n" .
 		"\tThis option tell Coruja to output the html file to coruja.html.\n" .
 		"\n" .
@@ -570,13 +552,9 @@ sub main{
 	print "Starting Coruja v$CORUJA_VERSION$CORUJA_DEV in $config->{MODE} mode... Please be sure you have internet connectivity!\n";
 
 	if ($config->{MODE} eq 'GUI'){
-		# Protect from stray signals
-		# You could just call MainLoop() w/o the fancy eval
-		while (1) {
-			eval MainLoop();   # Start the event processing
-		}
+		MainLoop();   # Start the GUI processing
 	}else{
-#		rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
+		corujaStart($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
 	}
 	print "Coruja has ended checking your feeds!\n";
 	print "Enjoy!\n";
