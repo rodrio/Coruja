@@ -236,8 +236,8 @@ MAIN: {
   $corujamenu->command(-label => 'Exit', -command => sub {exit;} );
   $corujamenu->pack(-side => 'left');
   my $helpmenu = $menubar->Menubutton(-text => 'Help');
-  $helpmenu->command( -label   =>  'Help', -command =>  \&loadConfig );
-  $helpmenu->command( -label   =>  'About', -command => \&saveConfig  );
+  $helpmenu->command( -label   =>  'Help', -command =>  \&displayHelp);
+  $helpmenu->command( -label   =>  'About', -command => \&displayAbout);
   $helpmenu->pack(-side => 'left');
   
   # Let's build the frames for our objects
@@ -344,6 +344,46 @@ sub loadPatterns{
                ["All Files", "*"] );
   
   $config->{PATTERNSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+}
+
+sub displayHelp(){
+	my $help = $mainwindow->DialogBox(-title => "Coruja Help",
+			     -buttons => ["Thanks!"]);
+
+	$help->Label(-text =>
+				"Coruja v$CORUJA_VERSION$CORUJA_DEV\n\n".
+				"Visit $CORUJA_URL\nfor more information about Coruja and other projects developed by GRIS.\n\n".
+				"---------------------------------------------------------------------------------------------\n".
+				"Coruja Feed Parser is a tool that searches RSS Feeds for interesting content. Just specify\n".
+				"the feeds you want Coruja to check and the patterns you want Coruja to search.\n".
+				"Coruja will generate an output file containing only what is interesting for you.\n\n"
+				)->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+
+    my $result = $help->Show;
+}
+
+sub displayAbout(){
+	my $about = $mainwindow->DialogBox(-title => "About Coruja",
+			     -buttons => ["Nice!"]);
+
+	$about->Label(-text =>
+				"Coruja v$CORUJA_VERSION$CORUJA_DEV\n\n".
+				"Visit $CORUJA_URL\nfor more information about Coruja and other projects developed by GRIS.\n\n".
+				"---------------------------------------------------------------------------------------------\n".
+				"Coruja authors:\n".
+				'Rodrigo M. T. Fernandez (rod.rio@gmail.com)'.
+				"\n".
+				'Bruno C. Buss (bruno.buss@gmail.com)'.
+				"\n\n".
+				"Coruja Project:\n".
+				"It is an OpenSource Project. Just try to keep original authors info in your dist. Thx.\n".
+				"Coruja has been developed by GRIS-DCC-UFRJ.\n".
+				"www.gris.dcc.ufrj.br\n"
+				)->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+
+    my $result = $about->Show;
 }
 
 sub GUIexecute(){
