@@ -7,73 +7,69 @@ use HTTP::Request;
 use XML::RSS;
 use List::MoreUtils qw(uniq);
 use App::Rad;
+use Tk;
 
+
+#####################
+# Version variables #
+#####################
 my $CORUJA_VERSION = 0.3;
 my $CORUJA_DEV = "-pre1"; #ON launch of a stable version, set this as "".
 my $CORUJA_URL = "http://www.gris.dcc.ufrj.br";
 
-# Set-up for App::Rad
-sub setup{
-
-	my $app = shift;
-
-	# We really don't have subcommands :P
-	$app->register_commands(qw(xml html));
-	
-}
-
+####################
+# Global Variables #
+####################
+my $mainwindow;
+my $rss_source = new XML::RSS;
+my $DEBUG = 0;
+# GUI Output choosing options
+my @outputmode = ('XML','HTML','XML and HTML');
 # Create a global user agent object
 my $agent = LWP::UserAgent->new;
 $agent->agent("Coruja v" . $CORUJA_VERSION . $CORUJA_DEV);
-
-# Start XML Logfile
-my $coruja = new XML::RSS(version => '1.0');
-$coruja->channel(
-	title => "Coruja Feed Parser v" . $CORUJA_VERSION . $CORUJA_DEV,
-	link => $CORUJA_URL,
-	description => "We watch it for you! ;)"
-);
-
-my $rss_source = new XML::RSS;
-my $DEBUG = 0;
-
-#Files:
-my $patfile = "patterns.txt";
-my $linksfile = "links.txt";
-my $xmloutput = "coruja.xml";
-my $htmloutput = "coruja.html";
-
-# Mode of operation:
-# 0 = xml
-# 1 = html
-my $opmode = 0;
-
 # HTML output buffer:
 my $htmloutbuf;
-
-# First... let's build the initial html struct...
 $htmloutbuf = "<html>\n";
 $htmloutbuf .= "<head>\n";
 $htmloutbuf .= "<title>Coruja Feed Parser Results - We watch it for you! ;)</title>\n";
 $htmloutbuf .= "<META http-equiv=Content-Type content=\"text/html; charset=ISO-8859-1\">\n";
 $htmloutbuf .= "</HEAD>\n\n";
 $htmloutbuf .= "<body>\n";
+# XML output buffer
+my $xmloutbuf = new XML::RSS(version => '1.0');
+$xmloutbuf->channel(
+	title => "Coruja Feed Parser v" . $CORUJA_VERSION . $CORUJA_DEV,
+	link => $CORUJA_URL,
+	description => "We watch it for you! ;)"
+);
+#Files:
+my $config = {
+	MODE => 'GUI',
+	FEEDSFILENAME => 'links.txt',
+	PATTERNSFILENAME => 'patterns.txt',
+	};
+my $output = {
+	MODE => 'XML',
+	XMLFILENAME => 'coruja.xml',
+	HTMLFILENAME => 'coruja.html',
+	};
 
+###############
+# subroutines #
+###############
+sub trim{
 # Function that trims words
 # call trim("word");
-sub trim{
 	my $string = shift;
 	$string =~ s/^\s+//;
 	$string =~ s/\s+$//;
 	return $string;
 }
 
-# Function that writes the output into a file
-# call writeLog("logfile", "String to write");
-
+sub feedParse{
 # Function that searches $rss_source for a word/pattern
 # Call feedParse("pattern")
-sub feedParse{
 	# Receiving resources
 	my $word = shift;
 	my $title;
@@ -90,10 +86,10 @@ sub feedParse{
 		{
 			print "Found $word at $title\n" if $DEBUG == 1;
 			# ... then we put it on our final feed.
-			push @{$coruja->{'items'}}, $rss_entry;
+			push @{$xmloutbuf->{'items'}}, $rss_entry;
 
 
-			if($opmode == 1)
+			if($output->{MODE} eq 'HTML')
 			{
 				# ... now, we get our item feed and put it there ...
 				$htmloutbuf .= "      <ul>\n";
@@ -106,11 +102,10 @@ sub feedParse{
 	}
 }
 
-
+sub rssVerify{
 # Function that performs the HTTP Request to check each link on feedlist
 # and combines them with each word on wordlist
 # Call rssVerify("feedlist","wordlist")
-sub rssVerify{
 	my $request;
 	my $resource;
 
@@ -134,7 +129,7 @@ sub rssVerify{
 	my @search = <DATA>;
 	close(DATA);
 
-	if($opmode == 1)
+	if($output->{MODE} eq 'HTML')
 	{
 		$htmloutbuf .= "<table width=\"600\" border=\"1\">\n";
 		$htmloutbuf .= "  <tr>\n";
@@ -169,7 +164,7 @@ sub rssVerify{
 		
 		print "Parsing $feedtitle ($site)...\n";
 		
-		if($opmode == 1)
+		if($output->{MODE} eq 'HTML')
 		{
 			# Building HTML structure
 			$htmloutbuf .= "      <font size=\"5\">$feedtitle</font><br>\n";
@@ -196,10 +191,10 @@ sub rssVerify{
 	}
 
 	# And before saving, we check to see if we didn't included duplicade entries:
-	@{$coruja->{'items'}} = uniq @{$coruja->{'items'}};
+	@{$xmloutbuf->{'items'}} = uniq @{$xmloutbuf->{'items'}};
 
 
-	if($opmode == 1) #html
+	if($output->{MODE} eq 'HTML') #html
 	{
 		$htmloutbuf .= "	</td>\n";
 		$htmloutbuf .= "  </tr>\n";
@@ -207,33 +202,210 @@ sub rssVerify{
 		$htmloutbuf .= "</body>\n</html>\n";
 
 		my $DATA;
-		open($DATA, '>', $htmloutput);
+		open($DATA, '>', $output->{HTMLFILENAME});
 		print $DATA $htmloutbuf;
 		close($DATA);
 
-		open($DATA, $htmloutput) || die("ERROR: No $htmloutput generated! Please run again...\n");
+		open($DATA, $output->{HTMLFILENAME}) || die("ERROR: No $output->{HTMLFILENAME} generated! Please run again...\n");
 		close($DATA);
 	}
 
 	# Closing and saving XML file
-	$coruja->save($xmloutput);
+	$xmloutbuf->save($output->{XMLFILENAME});
 	
 	my $DATA;
-	open($DATA, $xmloutput) || die("ERROR: No $xmloutput generated! Please run again...\n");
+	open($DATA, $output->{XMLFILENAME}) || die("ERROR: No $output->{XMLFILENAME} generated! Please run again...\n");
 	close($DATA);
 }
 
-sub main{
-	print "Starting Coruja v" . $CORUJA_VERSION . $CORUJA_DEV . "... Please be sure you have internet connectivity!\n";
-	rssVerify($linksfile, $patfile);
-	print "Info succesfully attached to log!\n";
+#####################
+# GUI Configuration #
+#####################
+MAIN: {
+#  debug("+MAIN");
+
+  # Attempt to load the default.conf configuration file
+  #readConfig("default.conf");
+
+  # Let's create our MainMenu
+  $mainwindow = MainWindow->new();
+  my $menubar = $mainwindow->Frame()->grid(-row => 0, -column => 0, -columnspan => 3, -sticky => 'nw');
+  
+  # Now let's create our menus
+  my $corujamenu = $menubar->Menubutton(-text => 'Coruja');
+  $corujamenu->command( -label   =>  'Load Feeds', -command =>  \&loadFeeds );
+  $corujamenu->command( -label   =>  'Load Patterns', -command => \&loadPatterns  );
+  $corujamenu->separator();
+  $corujamenu->command(-label   => 'Configuration...', -command => \&doConfig );
+  $corujamenu->separator();
+  $corujamenu->command(-label => 'Exit', -command => sub {exit;} );
+  $corujamenu->pack(-side => 'left');
+  my $helpmenu = $menubar->Menubutton(-text => 'Help');
+  $helpmenu->command( -label   =>  'Help', -command =>  \&loadConfig );
+  $helpmenu->command( -label   =>  'About', -command => \&saveConfig  );
+  $helpmenu->pack(-side => 'left');
+  
+  # Let's build the frames for our objects
+  my $top   = $mainwindow->Frame->grid(-row => 1,
+									   -column => 0,
+									   -sticky => 'nw',
+									   );
+  my $upleft   = $mainwindow->Frame->grid(-row => 2,
+										-column => 0,
+										-sticky => 'w',
+										);
+  my $upright  = $mainwindow->Frame->grid(-row => 2,
+                                        -column => 1,
+                                        -sticky => 'w',
+										);
+  my $downleft  = $mainwindow->Frame->grid(-row => 3,
+                                        -column => 0,
+                                        -sticky => 'w',
+										);
+  my $downright  = $mainwindow->Frame->grid(-row => 3,
+                                        -column => 1,
+                                        -sticky => 'w',
+										);
+  my $bottomleft = $mainwindow->Frame->grid(-row => 4,
+                                        -column => 0,
+                                        -sticky => 'w',
+										);
+  my $bottomright = $mainwindow->Frame->grid(-row => 4,
+                                        -column => 1,
+                                        -sticky => 'e',
+										);
+  my $bottom1   = $mainwindow->Frame->grid(-row => 5,
+									   -column => 1,
+									   -sticky => 'e',
+									   );
+  my $bottom2 = $mainwindow->Frame->grid(-row => 6,
+                                        -column => 1,
+                                        -sticky => 'e',
+										);
+  
+  # Top frame
+  $top->Label(-text => 'Choose output file format:')->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+  $top->Optionmenu(
+					-options => \@outputmode,
+					-variable => \$output->{MODE},
+					)->grid(-row => 0, -column => 1,-sticky => 'w');
+
+  # Up Left Frame
+  $upleft->Label(-text => 'Feed list:')->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+  $upleft->Label(-textvariable => \$config->{FEEDSFILENAME})->
+                grid(-row => 0, -column => 1,-sticky => 'w');
+  
+  # Up Right Frame
+  $upright->Label(-text => 'Pattern list:')->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+  $upright->Label(-textvariable => \$config->{PATTERNSFILENAME})->
+                grid(-row => 0, -column => 1,-sticky => 'nw');
+  
+  # Down Left Frame
+  $downleft->Text(
+			  qw/-width 50 -height 10/
+			  )->grid(-row => 0, -column => 0, -sticky => 'w');
+  
+  # Down Right Frame
+  $downright->Text(
+			  qw/-width 50 -height 10/
+			  )->grid(-row => 0, -column => 0, -sticky => 'w');
+  
+  # Bottom Left Frame
+  $bottomleft->Label(-text => 'Output File:')->
+                grid(-row => 2, -column => 0,-sticky => 'w');
+  $bottomleft->Label(-textvariable => \$output->{FILENAME})->
+                grid(-row => 2, -column => 1,-sticky => 'w');
+  
+  # Bottom Right Frame
+  
+  # Bottom 1 Frame (Coruja Image)
+  $bottom1->Photo('CORUJA_LOGO',
+				-file =>'images/logo_color.gif',
+				);
+  $bottom1->Label('-image' => 'CORUJA_LOGO')->pack(-anchor => "center");
+  
+  # Bottom 2 Frame (Operation button)
+  $bottom2->Button(-text => 'Watch it for me!',
+				  -width => 17,
+                  -command => \&run )->
+                  grid(qw/-row 0 -column 0 -sticky e/);
+
+}
+
+########################
+# App::Rad subroutines #
+########################
+sub setup{
+	# Set-up for App::Rad
+	# After setting up, App::Rad will run pre_process()
+	my $app = shift;
+	# We really don't have subcommands :P
+	$app->register_commands(qw(gui xml html));
+}
+
+sub pre_process{
+	# App::Rad internals
+	# Checking for options...
+	my $c = shift;
+	# Check if user is looking for help with -h or --help
+	if($c->options->{'help'} or $c->options->{'h'}){
+		print
+			"\n".
+			"For general help: '$0 help'\n".
+			"For specific module help: '$0 [gui|xml|html] --help'\n\n";
+		exit;
+		}
+	
+	# Check if user wants to see version information with -v, -V or --version
+	if($c->options->{'version'} or $c->options->{'V'} or $c->options->{'v'}){
+		print
+			"Coruja v" . $CORUJA_VERSION . $CORUJA_DEV . "\n".
+			"Visit $CORUJA_URL for more information about Coruja and other projects developed by GRIS.\n\n";
+		exit;
+		}
+	
+	# Now, define variables passed as options
+	$config->{PATTERNSFILENAME} = $c->options->{'patterns'} if $c->options->{'patterns'};
+	$config->{FEEDSFILENAME} = $c->options->{'feeds'} if $c->options->{'feeds'};
+	$output->{XMLFILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
+	$output->{HTMLFILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
+}
+
+sub default{
+	# App::Rad internals
+	# If no App::Rad mode is defined on terminal command, run default()
+	main(); # Execute GUI mode as default
+	return undef;
+}
+
+sub gui
+:Help(Start Coruja Graphic User Interface mode. [DEFAULT]
+			No options are accepted in Coruja GUI mode!){
+	my $c = shift;
+
+	if($c->options->{'help'} or $c->options->{'h'}){
+		print
+			"\n" .
+			"The GUI operation mode is the Coruja's default operation mode.\n\n" .
+			"At GUI operation mode, you will be able to use the graphic interface to control Coruja's operation.\n" .
+			"\n" .
+			"To know more about Coruja, go to GRIS website: $CORUJA_URL\n\n";
+		exit;
+		}
+
+	$output->{MODE} = 'XML';
+	$config->{MODE} = 'GUI';
+	main();
 	return undef;
 }
 
 sub xml
-:Help(Generate only xml file as output. [DEFAULT]
+:Help(Generate only xml file as output.
 			You can pass the following options to Coruja in xml mode:
-      			--patterns=patternsfile.txt - Read patterns from patternsfile.txt
+      		--patterns=patternsfile.txt - Read patterns from patternsfile.txt
 			--feeds=linksfile.txt - Read feeds link from linksfile.txt
 			--xmlout=coruja.xml - Output the xml to coruja.xml){
 	
@@ -242,8 +414,7 @@ sub xml
 	if($c->options->{'help'} or $c->options->{'h'})
 	{
 		print   "\n" .
-			"The xml output model is the Coruja's default operation mode.\n\n" .
-			"At xml mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
+			"At XML mode, Coruja will parse all the feeds, looking for defined words at all entry's title.\n" .
 			"Then it will create a new RSS valid file, with the result from the search.\n\n." .
 			"Coruja at xml options accept these options:\n\n" .
 			"--patterns=patternsfile.txt\n" .
@@ -258,7 +429,8 @@ sub xml
 		exit;
 	}
 	
-	
+	$output->{MODE} = 'XML';
+	$config->{MODE} = 'XML';
 	main();
 
 	return undef;
@@ -267,7 +439,7 @@ sub xml
 sub html
 :Help(Generate a xml and a html file as output. Good to preview the final feed.
       			You can pass the following options to Coruja in html mode:
-      			--patterns=patternsfile.txt - Read patterns from patternsfile.txt
+      		--patterns=patternsfile.txt - Read patterns from patternsfile.txt
 			--feeds=linksfile.txt - Read feeds link from linksfile.txt
 			--htmlout=coruja.html - Output the html to coruja.html
 			--xmlout=coruja.xml - Output the xml to coruja.xml){
@@ -293,47 +465,34 @@ sub html
 
 		exit;
 	}
-
-	$opmode = 1;
+	
+	$output->{MODE} = 'HTML';
+	$config->{MODE} = 'HTML';
 	main();
 
 	return undef;
 }
 
-# Let's check for options \o/
-sub pre_process{
-	my $c = shift;
+###################
+# Starting Coruja #
+###################
+sub main{
+	print "Starting Coruja v$CORUJA_VERSION$CORUJA_DEV in $config->{MODE} mode... Please be sure you have internet connectivity!\n";
 
-	if($c->options->{'version'} or $c->options->{'V'})
-	{
-		print   "Coruja v" . $CORUJA_VERSION . $CORUJA_DEV . "\n".
-			"Visit $CORUJA_URL for more information about Coruja and other projects developed by GRIS.\n\n";
-
-		exit;
+	if ($config->{MODE} eq 'GUI'){
+		# Protect from stray signals
+		# You could just call MainLoop() w/o the fancy eval
+		while (1) {
+			eval MainLoop();   # Start the event processing
+		}
+	}else{
+		rssVerify($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
 	}
-
-	$patfile = $c->options->{'patterns'} if $c->options->{'patterns'};
-	$linksfile = $c->options->{'feeds'} if $c->options->{'feeds'};
-	$xmloutput = $c->options->{'xmlout'} if $c->options->{'xmlout'};
-	$htmloutput = $c->options->{'htmlout'} if $c->options->{'htmlout'};
-}
-
-
-sub default{
-	my $c = shift;
-
-
-	if($c->options->{'help'} or $c->options->{'h'})
-	{
-		print   "\n".
-			"For general help: '$0 help'\n".
-			"For specific module help: '$0 [xml|html] --help'\n\n";
-		exit;
-	}
-
-	main(); # Execute xml mode as default
+	print "Coruja has ended checking your feeds!\n";
+	print "Enjoy!\n";
 	return undef;
 }
 
+# OK, now we're fine. Start the program! :P
 App::Rad->run();
 
