@@ -231,8 +231,8 @@ MAIN: {
   $corujamenu->command( -label   =>  'Load Feeds', -command =>  \&loadFeeds );
   $corujamenu->command( -label   =>  'Load Patterns', -command => \&loadPatterns  );
   $corujamenu->separator();
-#  $corujamenu->command(-label   => 'Configuration...', -command => \&doConfig );
-#  $corujamenu->separator();
+  $corujamenu->command(-label   => 'Set output filename', -command => \&setOutputFilename );
+  $corujamenu->separator();
   $corujamenu->command(-label => 'Exit', -command => sub {exit;} );
   $corujamenu->pack(-side => 'left');
   my $helpmenu = $menubar->Menubutton(-text => 'Help');
@@ -309,10 +309,26 @@ MAIN: {
 			  )->grid(-row => 0, -column => 0, -sticky => 'w');
   
   # Bottom Left Frame
-  $bottomleft->Label(-text => 'Output File:')->
-                grid(-row => 2, -column => 0,-sticky => 'w');
-  $bottomleft->Label(-textvariable => \$output->{FILENAME})->
-                grid(-row => 2, -column => 1,-sticky => 'w');
+  if ($output->{MODE} eq 'XML'){
+	$bottomleft->Label(-text => 'Output File:')->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+	$bottomleft->Label(-textvariable => \$output->{XMLFILENAME})->
+                grid(-row => 0, -column => 1,-sticky => 'w');
+  }elsif($output->{MODE} eq 'HTML'){
+	$bottomleft->Label(-text => 'Output File:')->
+                grid(-row => 1, -column => 0,-sticky => 'w');
+	$bottomleft->Label(-textvariable => \$output->{HTMLFILENAME})->
+                grid(-row => 1, -column => 1,-sticky => 'w');
+  }elsif($output->{MODE} eq 'XML and HTML'){
+	$bottomleft->Label(-text => 'Output File:')->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+	$bottomleft->Label(-textvariable => \$output->{XMLFILENAME})->
+                grid(-row => 0, -column => 1,-sticky => 'w');
+	$bottomleft->Label(-text => 'Output File:')->
+                grid(-row => 1, -column => 0,-sticky => 'w');
+	$bottomleft->Label(-textvariable => \$output->{HTMLFILENAME})->
+                grid(-row => 1, -column => 1,-sticky => 'w');
+  }
   
   # Bottom Right Frame
   
@@ -344,6 +360,21 @@ sub loadPatterns{
                ["All Files", "*"] );
   
   $config->{PATTERNSFILENAME} = $mainwindow->getOpenFile(-filetypes => \@types);
+}
+
+sub setOutputFilename{
+  $output->{XMLFILENAME} = $mainwindow->getSaveFile().".xml" if $output->{MODE} eq 'XML';
+  $output->{HTMLFILENAME} = $mainwindow->getSaveFile().".html" if $output->{MODE} eq 'HTML';
+  if ($output->{MODE} eq 'XML and HTML'){
+	my $error = $mainwindow->DialogBox(-title => "Error",-buttons => ["Oops!"]);
+	$error->Label(-text =>
+				"The mode 'XML and HTML' does not allow you to choose the filenames yet\n".
+				"Please wait for a future version!\n"
+				)->
+                grid(-row => 0, -column => 0,-sticky => 'w');
+    my $result = $error->Show;
+
+  }
 }
 
 sub displayHelp(){
