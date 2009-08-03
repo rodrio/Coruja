@@ -222,11 +222,6 @@ sub rssVerify{
 # GUI Configuration #
 #####################
 MAIN: {
-#  debug("+MAIN");
-
-  # Attempt to load the default.conf configuration file
-  #readConfig("default.conf");
-
   # Let's create our MainMenu
   $mainwindow = MainWindow->new();
   my $menubar = $mainwindow->Frame()->grid(-row => 0, -column => 0, -columnspan => 3, -sticky => 'nw');
