@@ -20,7 +20,9 @@ my $CORUJA_URL = "http://www.gris.dcc.ufrj.br";
 ####################
 # Global Variables #
 ####################
-my $mainwindow;
+my $mainwindow; #GUI Mainwindow
+my $downleft; #GUI Frame that demands realtime updating
+my $downright; #GUI Frame that demands realtime updating
 my $rss_source = new XML::RSS;
 my $DEBUG = 0;
 # GUI Output choosing options
@@ -82,15 +84,12 @@ sub feedParse{
 		$title = lc($rss_entry->{'title'});
 		$description = lc($rss_entry->{'description'});
 		# ... and if we find the word in title ...
-		unless (index($title, $word) == -1 and index($description, $word) == -1)
-		{
+		unless (index($title, $word) == -1 and index($description, $word) == -1){
 			print "Found $word at $title\n" if $DEBUG == 1;
 			# ... then we put it on our final feed.
 			push @{$xmloutbuf->{'items'}}, $rss_entry;
 
-
-			if($output->{MODE} eq 'HTML')
-			{
+			if($output->{MODE} eq 'HTML'){
 				# ... now, we get our item feed and put it there ...
 				$htmloutbuf .= "      <ul>\n";
 				$htmloutbuf .= "        <li><font size=\"4\"><b>$rss_entry->{'title'}</b></font></li>\n";
@@ -120,12 +119,12 @@ sub corujaStart{
 	my $feedpubdate;
 	
 	# Get RSS list to check.
-	open(DATA, $sitelistfilename) || die("Could not open file $sitelistfilename!\n");
+	open(DATA, $sitelistfilename) or die("Could not open file $sitelistfilename!\n");
 	my @links = <DATA>;
 	close(DATA);
   
 	# Get wordlist to check.
-	open(DATA, $wordlistfilename) || die("Could not open file $wordlistfilename!\n");
+	open(DATA, $wordlistfilename) or die("Could not open file $wordlistfilename!\n");
 	my @search = <DATA>;
 	close(DATA);
 
@@ -163,9 +162,12 @@ sub corujaStart{
 		$feedpubdate = $rss_source->channel('pubdate');
 		
 		print "Parsing $feedtitle ($site)...\n";
+		# Update status on text widgets on GUI
+		# But it is not working yet...
+		#$downleft->insert("end", "Parsing $feedtitle ($site)...\n");
+		#$mainwindow->update();
 		
-		if($output->{MODE} eq 'HTML')
-		{
+		if($output->{MODE} eq 'HTML'){
 			# Building HTML structure
 			$htmloutbuf .= "      <font size=\"5\">$feedtitle</font><br>\n";
 			$htmloutbuf .= "      <font size=\"4\">$feeddescription</font><br>\n";
@@ -186,6 +188,10 @@ sub corujaStart{
 			next if $word =~ /^\r/;
 			next if $word eq "";
       
+			# Update status on text widgets on GUI
+			# But it is not working yet...
+			#$downright->insert("end", "Searching for $word...\n");
+			#$mainwindow->update();
 			feedParse($word);
 		}
 	}
@@ -194,8 +200,7 @@ sub corujaStart{
 	@{$xmloutbuf->{'items'}} = uniq @{$xmloutbuf->{'items'}};
 
 
-	if($output->{MODE} eq 'HTML') #html
-	{
+	if($output->{MODE} eq 'HTML'){
 		$htmloutbuf .= "	</td>\n";
 		$htmloutbuf .= "  </tr>\n";
 		$htmloutbuf .= "</table>\n";
@@ -206,15 +211,15 @@ sub corujaStart{
 		print $DATA $htmloutbuf;
 		close($DATA);
 
-		open($DATA, $output->{FULLFILENAME}) || die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
+		open($DATA, $output->{FULLFILENAME}) or die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
 		close($DATA);
 	}
 
 	# Closing and saving XML file
-	$xmloutbuf->save($output->{FULLFILENAME});
+	$xmloutbuf->save($output->{FULLFILENAME}) if $output->{'MODE'} eq 'XML';
 	
 	my $DATA;
-	open($DATA, $output->{FULLFILENAME}) || die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
+	open($DATA, $output->{FULLFILENAME}) or die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
 	close($DATA);
 }
 
@@ -253,11 +258,11 @@ MAIN: {
                                         -column => 1,
                                         -sticky => 'w',
 										);
-  my $downleft  = $mainwindow->Frame->grid(-row => 3,
+  $downleft  = $mainwindow->Frame->grid(-row => 3,
                                         -column => 0,
                                         -sticky => 'w',
 										);
-  my $downright  = $mainwindow->Frame->grid(-row => 3,
+  $downright  = $mainwindow->Frame->grid(-row => 3,
                                         -column => 1,
                                         -sticky => 'w',
 										);
@@ -300,14 +305,14 @@ MAIN: {
                 grid(-row => 0, -column => 1,-sticky => 'nw');
   
   # Down Left Frame
-  $downleft->Text(
-			  qw/-width 50 -height 10/
-			  )->grid(-row => 0, -column => 0, -sticky => 'w');
+  $downleft->Text(-width => 50,-height => 10,-state => "disabled");
+#  $downleft->insert("end", "Type something here..."); # This is not working
+  $downleft->grid(-row => 0, -column => 0,-sticky => 'w');
   
   # Down Right Frame
-  $downright->Text(
-			  qw/-width 50 -height 10/
-			  )->grid(-row => 0, -column => 0, -sticky => 'w');
+  $downright->Text(-width => 50,-height => 10,-state => "disabled");
+#  $downright->insert("end", "Type something here..."); # This is not working
+  $downright->grid(-row => 0, -column => 0,-sticky => 'w');
   
   # Bottom Left Frame
 	$bottomleft->Label(-text => 'Output File:')->
