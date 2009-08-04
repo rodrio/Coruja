@@ -561,7 +561,7 @@ sub html
 sub main{
 	print "Starting Coruja v$CORUJA_VERSION$CORUJA_DEV in $config->{MODE} mode... Please be sure you have internet connectivity!\n";
 	corujaStart($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME}) if $config->{'MODE'} ne 'GUI';
-	eval MainLoop() if $config->{'mode'} eq 'GUI';
+	MainLoop() if $config->{'MODE'} eq 'GUI';
 	print "Coruja has ended checking your feeds!\n";
 	print "Enjoy!\n";
 	return undef;
