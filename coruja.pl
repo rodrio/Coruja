@@ -88,12 +88,15 @@ sub feedParse{
 			print "Found $word at $title\n" if $DEBUG == 1;
 			# ... then we put it on our final feed.
 			push @{$xmloutbuf->{'items'}}, $rss_entry;
-
+			
 			if($output->{MODE} eq 'HTML'){
+				# Highlighting $word
+				$title =~ s/$word/<u>$word<\/u>/;
+				$description =~ s/$word/<u>$word<\/u>/;
 				# ... now, we get our item feed and put it there ...
 				$htmloutbuf .= "      <ul>\n";
-				$htmloutbuf .= "        <li><font size=\"4\"><b>$rss_entry->{'title'}</b></font></li>\n";
-				$htmloutbuf .= "        <b>Description:</b>$rss_entry->{'description'}<br>\n" if ($rss_entry->{'description'});
+				$htmloutbuf .= "        <li><font size=\"4\"><b>$title</b></font></li>\n";
+				$htmloutbuf .= "        <b>Description:</b>$description<br>\n" if ($rss_entry->{'description'});
 				$htmloutbuf .= "        <b>Link:</b><a href=\"$rss_entry->{'link'}\">$rss_entry->{'link'}</a><br>\n";
 				$htmloutbuf .= "      </ul>\n";
 			}
@@ -226,6 +229,7 @@ sub corujaStart{
 #####################
 # GUI Configuration #
 #####################
+if ($config->{'mode'} eq 'GUI'){
 MAIN: {
   # Let's create our MainMenu
   $mainwindow = MainWindow->new();
@@ -334,6 +338,7 @@ MAIN: {
                   -command => \&GUIexecute)->
                   grid(qw/-row 0 -column 0 -sticky e/);
 
+}
 }
 
 ###################
@@ -555,12 +560,8 @@ sub html
 ###################
 sub main{
 	print "Starting Coruja v$CORUJA_VERSION$CORUJA_DEV in $config->{MODE} mode... Please be sure you have internet connectivity!\n";
-
-	if ($config->{MODE} eq 'GUI'){
-		MainLoop();   # Start the GUI processing
-	}else{
-		corujaStart($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME});
-	}
+	corujaStart($config->{FEEDSFILENAME}, $config->{PATTERNSFILENAME}) if $config->{'MODE'} ne 'GUI';
+	eval MainLoop() if $config->{'mode'} eq 'GUI';
 	print "Coruja has ended checking your feeds!\n";
 	print "Enjoy!\n";
 	return undef;
