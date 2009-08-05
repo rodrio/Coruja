@@ -54,7 +54,6 @@ my $config = {
 my $output = {
 	MODE => '',
 	FILENAME => 'coruja',
-	FULLFILENAME => '',
 	};
 
 ###############
@@ -88,11 +87,12 @@ sub feedParse{
 			print "Found $word at $title\n" if $DEBUG == 1;
 			# ... then we put it on our final feed.
 			push @{$xmloutbuf->{'items'}}, $rss_entry;
-			
 			if($output->{MODE} eq 'HTML'){
 				# Highlighting $word
-				$title =~ s/$word/<u>$word<\/u>/;
-				$description =~ s/$word/<u>$word<\/u>/;
+				$title = $rss_entry->{'title'};
+				$description = $rss_entry->{'description'};
+				$title =~ s/$word/<u>$word<\/u>/i;
+				$description =~ s/$word/<u>$word<\/u>/i;
 				# ... now, we get our item feed and put it there ...
 				$htmloutbuf .= "      <ul>\n";
 				$htmloutbuf .= "        <li><font size=\"4\"><b>$title</b></font></li>\n";
@@ -202,7 +202,7 @@ sub corujaStart{
 	# And before saving, we check to see if we didn't included duplicade entries:
 	@{$xmloutbuf->{'items'}} = uniq @{$xmloutbuf->{'items'}};
 
-
+	# Closing and saving HTML file
 	if($output->{MODE} eq 'HTML'){
 		$htmloutbuf .= "	</td>\n";
 		$htmloutbuf .= "  </tr>\n";
@@ -210,26 +210,25 @@ sub corujaStart{
 		$htmloutbuf .= "</body>\n</html>\n";
 
 		my $DATA;
-		open($DATA, '>', $output->{FULLFILENAME});
+		open($DATA, '>', $output->{FILENAME});
 		print $DATA $htmloutbuf;
 		close($DATA);
 
-		open($DATA, $output->{FULLFILENAME}) or die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
+		open($DATA, $output->{FILENAME}) or die("ERROR: No $output->{FILENAME} generated! Please run again...\n");
 		close($DATA);
 	}
 
 	# Closing and saving XML file
-	$xmloutbuf->save($output->{FULLFILENAME}) if $output->{'MODE'} eq 'XML';
+	$xmloutbuf->save($output->{FILENAME}) if $output->{'MODE'} eq 'XML';
 	
 	my $DATA;
-	open($DATA, $output->{FULLFILENAME}) or die("ERROR: No $output->{FULLFILENAME} generated! Please run again...\n");
+	open($DATA, $output->{FILENAME}) or die("ERROR: No $output->{FILENAME} generated! Please run again...\n");
 	close($DATA);
 }
 
 #####################
 # GUI Configuration #
 #####################
-if ($config->{'mode'} eq 'GUI'){
 MAIN: {
   # Let's create our MainMenu
   $mainwindow = MainWindow->new();
@@ -293,7 +292,7 @@ MAIN: {
   $top->Optionmenu(
 					-options => \@outputmode,
 					-variable => \$output->{MODE},
-					-command => \&setOutputExtension
+					-command => \&updateScreen
 					)->grid(-row => 0, -column => 1,-sticky => 'w');
 
   # Up Left Frame
@@ -321,7 +320,7 @@ MAIN: {
   # Bottom Left Frame
 	$bottomleft->Label(-text => 'Output File:')->
                 grid(-row => 0, -column => 0,-sticky => 'w');
-	$bottomleft->Label(-textvariable => \$output->{'FULLFILENAME'})->
+	$bottomleft->Label(-textvariable => \$output->{'FILENAME'})->
                 grid(-row => 0, -column => 1,-sticky => 'w');
   
   # Bottom Right Frame
@@ -339,7 +338,6 @@ MAIN: {
                   grid(qw/-row 0 -column 0 -sticky e/);
 
 }
-}
 
 ###################
 # GUI subroutines #
@@ -355,13 +353,15 @@ sub loadPatterns{
 }
 
 sub setOutputFilename{
-	$output->{'FILENAME'} = $mainwindow->getSaveFile();
-	setOutputExtension();
+	my @types;
+	@types = (["HTML Files", ".html"],["All Files", "*"]) if $output->{'MODE'} eq 'HTML';
+	@types = (["HTML Files", ".html"],["All Files", "*"]) if $output->{'MODE'} eq 'XML';
+	$output->{'FILENAME'} = $mainwindow->getSaveFile(-filetypes => \@types);
+#	setOutputExtension();
+	updateScreen();
 }
 
-sub setOutputExtension{
-	$output->{'FULLFILENAME'} = $output->{'FILENAME'}.".xml" if $output->{MODE} eq 'XML';
-	$output->{'FULLFILENAME'} = $output->{'FILENAME'}.".html" if $output->{MODE} eq 'HTML';
+sub updateScreen{
 	$mainwindow->update();
 }
 
@@ -444,8 +444,8 @@ sub pre_process{
 	# Now, define variables passed as options
 	$config->{PATTERNSFILENAME} = $c->options->{'patterns'} if $c->options->{'patterns'};
 	$config->{FEEDSFILENAME} = $c->options->{'feeds'} if $c->options->{'feeds'};
-	$output->{FULLFILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
-	$output->{FULLFILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
+	$output->{FILENAME} = $c->options->{'xmlout'} if $c->options->{'xmlout'};
+	$output->{FILENAME} = $c->options->{'htmlout'} if $c->options->{'htmlout'};
 	$config->{MODE} = 'GUI'; #Execute GUI mode as default
 }
 
