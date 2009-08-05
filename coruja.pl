@@ -14,7 +14,7 @@ use Tk;
 # Version variables #
 #####################
 my $CORUJA_VERSION = 0.3;
-my $CORUJA_DEV = "-pre1"; #ON launch of a stable version, set this as "".
+my $CORUJA_DEV = "-rc1"; #ON launch of a stable version, set this as "".
 my $CORUJA_URL = "http://www.gris.dcc.ufrj.br";
 
 ####################
