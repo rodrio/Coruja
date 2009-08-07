@@ -14,7 +14,7 @@ use Tk;
 # Version variables #
 #####################
 my $CORUJA_VERSION = 0.3;
-my $CORUJA_DEV = "-rc1"; #ON launch of a stable version, set this as "".
+my $CORUJA_DEV = "-rc2"; #ON launch of a stable version, set this as "".
 my $CORUJA_URL = "http://www.gris.dcc.ufrj.br";
 
 ####################
@@ -300,22 +300,26 @@ MAIN: {
                 grid(-row => 0, -column => 0,-sticky => 'w');
   $upleft->Label(-textvariable => \$config->{FEEDSFILENAME})->
                 grid(-row => 0, -column => 1,-sticky => 'w');
+  $upleft->Label(-text => 'Pattern list:')->
+                grid(-row => 1, -column => 0,-sticky => 'w');
+  $upleft->Label(-textvariable => \$config->{PATTERNSFILENAME})->
+                grid(-row => 1, -column => 1,-sticky => 'nw');
   
   # Up Right Frame
-  $upright->Label(-text => 'Pattern list:')->
-                grid(-row => 0, -column => 0,-sticky => 'w');
-  $upright->Label(-textvariable => \$config->{PATTERNSFILENAME})->
-                grid(-row => 0, -column => 1,-sticky => 'nw');
+#  $upright->Label(-text => 'Pattern list:')->
+#                grid(-row => 0, -column => 0,-sticky => 'w');
+#  $upright->Label(-textvariable => \$config->{PATTERNSFILENAME})->
+#                grid(-row => 0, -column => 1,-sticky => 'nw');
   
   # Down Left Frame
-  $downleft->Text(-width => 50,-height => 10,-state => "disabled");
+#  $downleft->Text(-width => 50,-height => 10,-state => "disabled");
 #  $downleft->insert("end", "Type something here..."); # This is not working
-  $downleft->grid(-row => 0, -column => 0,-sticky => 'w');
+#  $downleft->grid(-row => 0, -column => 0,-sticky => 'w');
   
   # Down Right Frame
-  $downright->Text(-width => 50,-height => 10,-state => "disabled");
+#  $downright->Text(-width => 50,-height => 10,-state => "disabled");
 #  $downright->insert("end", "Type something here..."); # This is not working
-  $downright->grid(-row => 0, -column => 0,-sticky => 'w');
+#  $downright->grid(-row => 0, -column => 0,-sticky => 'w');
   
   # Bottom Left Frame
 	$bottomleft->Label(-text => 'Output File:')->
